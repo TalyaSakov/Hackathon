@@ -6,7 +6,7 @@ import multiprocessing
 import random
 import sys
 from scapy.all import get_if_addr
-
+from termcolor import colored
 
 class Server:
 
@@ -44,7 +44,7 @@ class Server:
 
 
         # Initiate server broadcasting Thread
-        print('Server started, listening on IP address {}'.format(self.TCPIP))
+        print(colored('Server started, listening on IP address {}'.format(self.TCPIP),'p','blue',attrs=['bold']))
         self.tBroadCast = threading.Thread(target=self.broadcast, args=(self.TCPIP, self.Port))
         # Initiate server players collector Thread
         self.tCollector = threading.Thread(target=self.TCP_Connection, args=())
@@ -121,7 +121,7 @@ class Server:
             try:
                 self.gameServerTCP.listen()
                 client, addr = self.gameServerTCP.accept()
-                print(f'TCP connection has been made')
+                print(colored(f'TCP connection has been made','blue',attrs=['bold']))
                 # Initiate Thread for each player
                 t = threading.Thread(target=self.setPlayerAndStart, args=(client, addr))
                 players_threads.append(t)
