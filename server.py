@@ -44,7 +44,7 @@ class Server:
 
 
         # Initiate server broadcasting Thread
-        print(colored('Server started, listening on IP address {}'.format(self.TCPIP),'p','blue',attrs=['bold']))
+        print(colored(f'Server started, listening on IP address {self.TCPIP}','blue',attrs=['bold']))
         self.tBroadCast = threading.Thread(target=self.broadcast, args=(self.TCPIP, self.Port))
         # Initiate server players collector Thread
         self.tCollector = threading.Thread(target=self.TCP_Connection, args=())
