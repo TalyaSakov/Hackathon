@@ -37,7 +37,7 @@ class GameClient:
                 serverPort = packet[2]
                 if packet[0] != 0xabcddcba:
                     continue
-                print(f"Received offer from {addr[0]}, attempting to connect...")
+                print(colored(f"Received offer from {addr[0]}, attempting to connect...",'yellow'))
                 self.ConnectingToGame(addr[0], int(serverPort))
             except:
                 pass
@@ -46,7 +46,7 @@ class GameClient:
         try:
             self.gameClientTCP.settimeout(10)
             # Connecting to the TCP Game Server
-            print(f'trying to connect tcp, the address is {addr} and the port is {gamePort}')
+            print(colored(f'trying to connect tcp, the address is {addr} and the port is {gamePort}','yellow'))
             self.gameClientTCP.connect((addr, gamePort))
             # Sending to the Server our Team Name
             self.gameClientTCP.sendall((self.teamName + '\n').encode())
@@ -57,11 +57,11 @@ class GameClient:
             except:
                 pass
             if data is None:
-                print(f'No Welcome Message has been received. Lets find new Server')
+                print(colored(f'No Welcome Message has been received. Lets find new Server','red'))
             else:
                 print(data.decode())
             self.playGame()
-            print('Server disconnected, listening for offer requests...')
+            print(colored('Server disconnected, listening for offer requests...','yellow'))
         except:
             pass
         self.gameClientTCP = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -75,7 +75,7 @@ class GameClient:
             for s in inputready:
                 if s == self.gameClientTCP:
                     data = s.recv(1024).decode()
-                    print(data)
+                    print(colored(data,'magenta','on_white'))
                     exit_while = True
                     break
 
