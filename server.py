@@ -8,12 +8,10 @@ import sys
 from scapy.all import get_if_addr
 
 
-
-
-
 class Server:
 
-    def __init__(self, PORT, TEST = None):
+    def __init__(self, PORT, TEST=None):
+        self.final = []
         self.Port = PORT
 
         # if TEST:
@@ -23,11 +21,10 @@ class Server:
         # self.TCPIP = get_if_addr('eth1')
         # self.TCPIP = '127.0.0.1'
 
-        # TODO: fix the static ip
+        # TODO: connect to ssh
         # TODO: Use colors
         hostname = socket.gethostname()
         self.TCPIP = socket.gethostbyname(hostname)
-        print(self.TCPIP)
         self.broadcastAddr = '172.1.255.255'
 
         # Let the Server know the game start or over
@@ -42,13 +39,13 @@ class Server:
         self.initiateUDPSockets()
         # Initiate server TCP socket
         self.initiateTCPSockets(PORT)
-        self.answerTuple = self.randomEqution()
-        self.rightAnswer = self.answerTuple[0]
+
+        # self.gameTime = None
+
 
         # Initiate server broadcasting Thread
         print('Server started, listening on IP address {}'.format(self.TCPIP))
         self.tBroadCast = threading.Thread(target=self.broadcast, args=(self.TCPIP, self.Port))
-
         # Initiate server players collector Thread
         self.tCollector = threading.Thread(target=self.TCP_Connection, args=())
         # Semaphore to control the flowing of clients
@@ -82,28 +79,25 @@ class Server:
         # bind the socket
         # self.gameServerUDP.bind((host, port))
 
-        self.endBroadcast = time.time() + 10
-        while time.time() < self.endBroadcast:
+        self.answerTuple = self.randomEqution()
+        self.rightAnswer = self.answerTuple[0]
+
+        while True:
             BROADCAST_PORT = 13117
             message = struct.pack('IbH', 0xabcddcba, 0x2, port)
             self.gameServerUDP.sendto(message, ('<broadcast>', BROADCAST_PORT))
-            print('Sending broadcast')
+            # print('Sending broadcast')
             time.sleep(1)
             if len(self.players) == 2:
                 break
 
+        self.sendWelcomeMessage()
+        self.gameStarted = True
+        self.gameTime = time.time() + 10
 
-        self.final = []
-        if len(self.players) == 2:
-            # self.sT.acquire()
-            self.sendWelcomeMessage()
-            self.gameStarted = True
-            while len(self.final) == 0:
-                continue
-            self.sendGameOverMessage()
-        else:
-            print("No Players after 10 secs, Let's try agian")
-            self.players = {}
+        while len(self.final) == 0 and time.time() < self.gameTime:
+            continue
+        self.sendGameOverMessage()
         # Reset the players dict
         self.players = {}
         # self.sT.release()
@@ -111,17 +105,14 @@ class Server:
         self.broadcast(host, port)
 
     def sendWelcomeMessage(self):
-        try:
-            welcomeStr = f"Welcome to Quick Maths.\nPlayer 1: {self.players[1][1]}Player 2: {self.players[2][1]}" \
-                         f"==\nPlease answer the following question as fast as you can:\n{self.answerTuple[1]} "
-            for player in self.players.keys():
-                # print(f'player socket {player[0]}')
-                try:
-                    self.players[player][0].sendall(welcomeStr.encode())
-                except:
-                    pass
-        except:
-            pass
+        welcomeStr = f"Welcome to Quick Maths.\nPlayer 1: {self.players[1][1]}Player 2: {self.players[2][1]}" \
+                     f"==\nPlease answer the following question as fast as you can:\n{self.answerTuple[1]} "
+        for player in self.players.keys():
+            # print(f'player socket {player[0]}')
+            try:
+                self.players[player][0].sendall(welcomeStr.encode())
+            except:
+                break
 
     def TCP_Connection(self):
         players_threads = []
@@ -136,6 +127,7 @@ class Server:
                 players_threads.append(t)
             except:
                 pass
+
         players_threads[0].start()
         players_threads[1].start()
 
@@ -143,8 +135,10 @@ class Server:
             thread.join()
         # Game over
         self.gameStarted = False
-        # Collection the players agian.
-        # self.sT.acquire()
+        # Close the last TCP sockets.
+        for player in self.players.keys():
+            self.players[player][0].close()
+        self.final = []
         self.TCP_Connection()
 
     def setPlayerAndStart(self, playerSocket, playerAddr):
@@ -152,11 +146,11 @@ class Server:
             playerSocket.settimeout(3)
             playerNameDecoded = playerSocket.recv(1024).decode()
             self.sT.acquire()
-            if playerNameDecoded  in self.players.values():
+            if playerNameDecoded in self.players.values():
                 raise Exception('same client twice')
             playerNumber = 1 if len(self.players.keys()) == 0 else 2
             self.players[playerNumber] = [playerSocket, playerNameDecoded, playerNumber, 0]
-            print(f'{playerNameDecoded[:-1]} has acquired')
+            # print(f'{playerNameDecoded[:-1]} has acquired')
             self.sT.release()
         except:
             return
@@ -164,20 +158,21 @@ class Server:
 
     def StartGame(self, playerNumber, playerSocket):
 
-        # After game over making sure we don't stack in loop
-        while len(self.players.keys()) < 2:
-            if len(self.players.keys()) == 1:
-                print(f"waiting for the second player.")
-                time.sleep(1)
+        # # After game over making sure we don't stack in loop
+        # while len(self.players.keys()) < 2:
+        #     if len(self.players.keys()) == 1:
+        #         print(f"waiting for the second player.")
+        #         time.sleep(1)
 
         stop_time = time.time() + 10
-        playerSocket.settimeout(1)
+        # playerSocket.settimeout(1)
         while time.time() < stop_time:
             try:
                 # Adding the messages to his score - in the dict
                 inputByClient = playerSocket.recv(1024).decode()
-                print(f'input by clint is {inputByClient}')
-                self.final.append((inputByClient,playerNumber))
+                # print(f'input by clint is {inputByClient}')
+                self.final.append((inputByClient, playerNumber))
+                # self.final[(9,2)]
                 break
             except:
                 pass
@@ -191,15 +186,29 @@ class Server:
         else:
             return num1 - num2, str(num1) + "-" + str(num2) + "?"
 
+
     def sendGameOverMessage(self):
-        gameOver = f'Game over!\nThe correct answer was {self.final[0][0][0]}!' \
-                   f' Congratulations to the winner: {self.players[self.final[0][1]][1]} '
+        if len(self.final) == 0:
+            gameOver = "The time is over"
+        else:
+            if self.rightAnswer == int(self.final[0][0]):
+                # self.player[player_num][hisName]
+                winner = self.players[self.final[0][1]][1]
+                # Can be player number 1 or number 2.
+            else:
+                if self.final[0][1] == 1:
+                    winner = self.players[2][1]
+                else:
+                    winner = self.players[1][1]
+
+            gameOver = f'Game over!\nThe correct answer was {self.rightAnswer}!' \
+                       f' Congratulations to the winner: {winner} '
         for player in self.players.keys():
             try:
-                self.players[player][0].sendall(gameOver.encode())
+                self.players[player][0].sendall(f'{gameOver}'.encode())
+                self.players[player][0].close()
             except:
                 pass
-
 
 
 PORT = 12345

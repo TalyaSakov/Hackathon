@@ -58,7 +58,6 @@ class GameClient:
                 pass
             if data is None:
                 print(f'No Welcome Message has been received. Lets find new Server')
-                raise Exception('Connected Server sucks.')
             else:
                 print(data.decode())
             self.playGame()
@@ -69,27 +68,23 @@ class GameClient:
 
     def playGame(self):
 
-        stop_time = time.time() + 10
         exit_while = False
-        while time.time() < stop_time:
+        while True:
             input = [self.gameClientTCP, sys.stdin]
             inputready, outputready, exceptready = select.select(input, [], [])
             for s in inputready:
                 if s == self.gameClientTCP:
-                    # handle the server socket
                     data = s.recv(1024).decode()
                     print(data)
                     exit_while = True
                     break
 
                 elif s == sys.stdin:
-                    # handle standard input
                     ans = sys.stdin.readline()
-                    # print(f'answer from the client is {ans}')
                     self.gameClientTCP.sendall(ans.encode())
-
             if exit_while:
                 break
+
 
 def Main():
     GameClient(False)
