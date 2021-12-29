@@ -18,41 +18,26 @@ class Server:
         #     self.IP = get_if_addr('eth2')
         #     self.broadcastAddr = '172.99.255.255'
         # else:
-        # self.TCPIP = get_if_addr('eth1')
+        self.TCPIP = get_if_addr('eth1')
         # self.TCPIP = '127.0.0.1'
 
-        # TODO: connect to ssh
-        # TODO: Use colors
-        hostname = socket.gethostname()
-        self.TCPIP = socket.gethostbyname(hostname)
-        self.broadcastAddr = '172.1.255.255'
-
-        # Let the Server know the game start or over
         self.gameStarted = False
-        # Game Timer (10 secs) until the game will start
+        # Game timer
         self.endBroadcast = 0
-        # Collecting the players into Dict
         self.players = {}
-        # Lock in order to write into the dict
-        self.semaphore = threading.Semaphore()
         # Initiate server UDP socket
         self.initiateUDPSockets()
         # Initiate server TCP socket
         self.initiateTCPSockets(PORT)
 
-        # self.gameTime = None
-
-
-        # Initiate server broadcasting Thread
         print(colored(f'Server started, listening on IP address {self.TCPIP}','blue',attrs=['bold']))
         self.tBroadCast = threading.Thread(target=self.broadcast, args=(self.TCPIP, self.Port))
         # Initiate server players collector Thread
-        self.tCollector = threading.Thread(target=self.TCP_Connection, args=())
-        # Semaphore to control the flowing of clients
+        self.tCollector = threading.Thread(target=self.TCP_Sockets, args=())
+        # Semaphore to control the clients flow
         self.sT = threading.Semaphore(1)
         self.tBroadCast.start()
         self.tCollector.start()
-
         # Waiting for the threads to end.
         self.tBroadCast.join()
         self.tCollector.join()
@@ -67,17 +52,9 @@ class Server:
     def initiateTCPSockets(self, PORT):
         self.gameServerTCP = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.gameServerTCP.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-        # Bind to the Addr and Port
-        # print(f'tct ip {self.TCPIP} and port is {PORT}')
-        # self.gameServerTCP.bind(('192.168.14.3', PORT))
-        self.gameServerTCP.bind(('10.100.102.193', PORT))
+        self.gameServerTCP.bind((self.TCPIP, PORT))
 
     def broadcast(self, host, port):
-
-        # randEquation = self.randomEqution()
-
-        # bind the socket
-        # self.gameServerUDP.bind((host, port))
 
         self.answerTuple = self.randomEqution()
         self.rightAnswer = self.answerTuple[0]
@@ -114,7 +91,7 @@ class Server:
             except:
                 break
 
-    def TCP_Connection(self):
+    def TCP_Sockets(self):
         players_threads = []
         while not self.gameStarted and len(players_threads) < 2:
             self.gameServerTCP.settimeout(1.5)
@@ -139,7 +116,7 @@ class Server:
         for player in self.players.keys():
             self.players[player][0].close()
         self.final = []
-        self.TCP_Connection()
+        self.TCP_Sockets()
 
     def setPlayerAndStart(self, playerSocket, playerAddr):
         try:
@@ -157,22 +134,12 @@ class Server:
         self.StartGame(playerNumber, playerSocket)
 
     def StartGame(self, playerNumber, playerSocket):
-
-        # # After game over making sure we don't stack in loop
-        # while len(self.players.keys()) < 2:
-        #     if len(self.players.keys()) == 1:
-        #         print(f"waiting for the second player.")
-        #         time.sleep(1)
-
         stop_time = time.time() + 10
-        # playerSocket.settimeout(1)
         while time.time() < stop_time:
             try:
-                # Adding the messages to his score - in the dict
+                # Adding the first client response to the self.final dict
                 inputByClient = playerSocket.recv(1024).decode()
-                # print(f'input by clint is {inputByClient}')
                 self.final.append((inputByClient, playerNumber))
-                # self.final[(9,2)]
                 break
             except:
                 pass

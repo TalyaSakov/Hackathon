@@ -13,20 +13,19 @@ class GameClient:
 
     def __init__(self, TEST):
         self.teamName = random.choice(["Maya","Yoni","Talya","Daphne"])
-
         self.gameClientUDP = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-
         self.gameClientUDP.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
         self.gameClientUDP.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-
+        self.gameClientUDP.bind(('', 13117))
+        self.gameClientTCP = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # if TEST:
         #     self.gameClientUDP.bind(('172.99.255.255', 13117))
         # else:
-        self.gameClientUDP.bind(('', 13117))
-        print(colored("Client started, listening for offer requests...", 'yellow'))
-        self.gameClientTCP = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
+        print(colored("Client started, listening for offer requests...", 'yellow'))
         self.LookingForGame()
+
+
 
     def LookingForGame(self):
         while True:
