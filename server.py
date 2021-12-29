@@ -6,7 +6,7 @@ import multiprocessing
 import random
 import sys
 from scapy.all import get_if_addr
-from termcolor import colored
+# from termcolor import colored
 
 class Server:
 
@@ -15,27 +15,25 @@ class Server:
         self.Port = PORT
 
         # if TEST:
-        #     self.IP = get_if_addr('eth2')
-        #     self.broadcastAddr = '172.99.255.255'
-        # else:
         self.TCPIP = get_if_addr('eth1')
+        # Let the Server know the game start or over
         self.gameStarted = False
-        # Game timer
-        self.endBroadcast = 0
+        # Collecting the players into Dict
         self.players = {}
         # Initiate server UDP socket
         self.initiateUDPSockets()
         # Initiate server TCP socket
         self.initiateTCPSockets(PORT)
-
-        print(colored(f'Server started, listening on IP address {self.TCPIP}','blue',attrs=['bold']))
+        # Initiate server broadcasting Thread
+        print(f'Server started, listening on IP address {self.TCPIP}')
         self.tBroadCast = threading.Thread(target=self.broadcast, args=(self.TCPIP, self.Port))
         # Initiate server players collector Thread
-        self.tCollector = threading.Thread(target=self.TCP_Sockets, args=())
-        # Semaphore to control the clients flow
+        self.tCollector = threading.Thread(target=self.TCP_Connection, args=())
+        # Semaphore to control the flowing of clients
         self.sT = threading.Semaphore(1)
         self.tBroadCast.start()
         self.tCollector.start()
+
         # Waiting for the threads to end.
         self.tBroadCast.join()
         self.tCollector.join()
@@ -53,14 +51,18 @@ class Server:
         self.gameServerTCP.bind((self.TCPIP, PORT))
 
     def broadcast(self, host, port):
-
         self.answerTuple = self.randomEqution()
+        while self.answerTuple[0] < 0:
+            self.answerTuple = self.randomEqution()
         self.rightAnswer = self.answerTuple[0]
 
         while True:
             BROADCAST_PORT = 13117
             message = struct.pack('IbH', 0xabcddcba, 0x2, port)
+            # '172.99.255.255'
+            # x.x.255.255
             self.gameServerUDP.sendto(message, ('<broadcast>', BROADCAST_PORT))
+            print('Sending broadcast')
             time.sleep(1)
             if len(self.players) == 2:
                 break
@@ -74,7 +76,6 @@ class Server:
         self.sendGameOverMessage()
         # Reset the players dict
         self.players = {}
-        # self.sT.release()
         # broadcasting agian
         self.broadcast(host, port)
 
@@ -87,14 +88,14 @@ class Server:
             except:
                 break
 
-    def TCP_Sockets(self):
+    def TCP_Connection(self):
         players_threads = []
         while not self.gameStarted and len(players_threads) < 2:
             self.gameServerTCP.settimeout(1.5)
             try:
                 self.gameServerTCP.listen()
                 client, addr = self.gameServerTCP.accept()
-                print(colored(f'TCP connection has been made','blue',attrs=['bold']))
+                print(f'TCP connection has been made')
                 # Initiate Thread for each player
                 t = threading.Thread(target=self.setPlayerAndStart, args=(client, addr))
                 players_threads.append(t)
@@ -112,7 +113,7 @@ class Server:
         for player in self.players.keys():
             self.players[player][0].close()
         self.final = []
-        self.TCP_Sockets()
+        self.TCP_Connection()
 
     def setPlayerAndStart(self, playerSocket, playerAddr):
         try:
@@ -129,10 +130,12 @@ class Server:
         self.StartGame(playerNumber, playerSocket)
 
     def StartGame(self, playerNumber, playerSocket):
+
         stop_time = time.time() + 10
+        # playerSocket.settimeout(1)
         while time.time() < stop_time:
             try:
-                # Adding the first client response to the self.final dict
+                # Adding the messages to his score - in the dict
                 inputByClient = playerSocket.recv(1024).decode()
                 self.final.append((inputByClient, playerNumber))
                 break
@@ -151,10 +154,10 @@ class Server:
 
     def sendGameOverMessage(self):
         if len(self.final) == 0:
-            gameOver = "It's a draw!"
+            gameOver = "The time is over"
         else:
             if self.rightAnswer == int(self.final[0][0]):
-                # The format is - self.player[player_num][hisName]
+                # self.player[player_num][hisName]
                 winner = self.players[self.final[0][1]][1]
                 # Can be player number 1 or number 2.
             else:
@@ -172,15 +175,11 @@ class Server:
             except:
                 pass
 
-
-PORT = 12345
+PORT = 2055
 HOST = None
 
-Server(PORT, False)
-
-
 def Main():
-    server = Server(12345)
+    server = Server(2055)
 
 
 if __name__ == '__main__':
