@@ -19,8 +19,6 @@ class Server:
         #     self.broadcastAddr = '172.99.255.255'
         # else:
         self.TCPIP = get_if_addr('eth1')
-        # self.TCPIP = '127.0.0.1'
-
         self.gameStarted = False
         # Game timer
         self.endBroadcast = 0
@@ -63,7 +61,6 @@ class Server:
             BROADCAST_PORT = 13117
             message = struct.pack('IbH', 0xabcddcba, 0x2, port)
             self.gameServerUDP.sendto(message, ('<broadcast>', BROADCAST_PORT))
-            # print('Sending broadcast')
             time.sleep(1)
             if len(self.players) == 2:
                 break
@@ -85,7 +82,6 @@ class Server:
         welcomeStr = f"Welcome to Quick Maths.\nPlayer 1: {self.players[1][1]}Player 2: {self.players[2][1]}" \
                      f"==\nPlease answer the following question as fast as you can:\n{self.answerTuple[1]} "
         for player in self.players.keys():
-            # print(f'player socket {player[0]}')
             try:
                 self.players[player][0].sendall(welcomeStr.encode())
             except:
@@ -127,7 +123,6 @@ class Server:
                 raise Exception('same client twice')
             playerNumber = 1 if len(self.players.keys()) == 0 else 2
             self.players[playerNumber] = [playerSocket, playerNameDecoded, playerNumber, 0]
-            # print(f'{playerNameDecoded[:-1]} has acquired')
             self.sT.release()
         except:
             return
@@ -156,10 +151,10 @@ class Server:
 
     def sendGameOverMessage(self):
         if len(self.final) == 0:
-            gameOver = "The time is over"
+            gameOver = "It's a draw!"
         else:
             if self.rightAnswer == int(self.final[0][0]):
-                # self.player[player_num][hisName]
+                # The format is - self.player[player_num][hisName]
                 winner = self.players[self.final[0][1]][1]
                 # Can be player number 1 or number 2.
             else:
